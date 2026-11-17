@@ -1,0 +1,204 @@
+{
+  "entities": {
+    "Report311": {
+      "title": "Community 311 Issue Report",
+      "description": "A neighborhood infrastructure or service report submitted by a resident.",
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "Roads & Paving",
+            "Streetlight & Safety",
+            "Water & Drainage",
+            "Parks & Trees",
+            "Trash & Property",
+            "Sidewalk & Crosswalk",
+            "Traffic & Signage",
+            "Other Local Issue",
+            "Pothole",
+            "Streetlight",
+            "Graffiti",
+            "Illegal Dumping",
+            "Sidewalk Hazard",
+            "Drainage"
+          ]
+        },
+        "location": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "description": { "type": "string", "minLength": 5, "maxLength": 1000 },
+        "status": {
+          "type": "string",
+          "enum": ["Submitted", "Dispatched", "In Progress", "Resolved"]
+        },
+        "submittedDate": { "type": "string", "maxLength": 60 },
+        "upvotes": { "type": "number" },
+        "reporterName": { "type": "string", "maxLength": 80 },
+        "authorUid": { "type": "string", "maxLength": 128 },
+        "communityId": { "type": "string", "maxLength": 64 },
+        "mapX": { "type": "number" },
+        "mapY": { "type": "number" },
+        "photoUrl": { "type": "string", "maxLength": 300 },
+        "photoModerationStatus": {
+          "type": "string",
+          "enum": ["approved", "pending_review", "flagged", "removed"]
+        },
+        "photoModerationNote": { "type": "string", "maxLength": 240 },
+        "photoFlagCount": { "type": "number" },
+        "afterPhotoUrl": { "type": "string", "maxLength": 300 },
+        "resolvedDate": { "type": "string", "maxLength": 60 },
+        "officialResponse": { "type": "string", "maxLength": 600 },
+        "officialResponderName": { "type": "string", "maxLength": 100 },
+        "officialRespondedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["category", "location", "description", "status", "submittedDate", "upvotes", "reporterName", "authorUid", "communityId"]
+    },
+    "CivicComment": {
+      "title": "Moderated Public Stance Comment",
+      "description": "A public resident or official comment on a local proposal or decision with moderation status.",
+      "type": "object",
+      "properties": {
+        "civicItemId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "authorUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "stance": { "type": "string", "enum": ["Support", "Concern", "Question"] },
+        "body": { "type": "string", "minLength": 3, "maxLength": 1000 },
+        "createdAtLabel": { "type": "string", "maxLength": 60 },
+        "moderationStatus": {
+          "type": "string",
+          "enum": ["approved", "pending_review", "flagged", "removed"]
+        },
+        "moderationNote": { "type": "string", "maxLength": 240 },
+        "flagCount": { "type": "number" },
+        "isOfficialResponse": { "type": "boolean" },
+        "officialRole": { "type": "string", "maxLength": 80 }
+      },
+      "required": ["civicItemId", "authorUid", "authorName", "stance", "body", "createdAtLabel", "moderationStatus", "flagCount"]
+    },
+    "CommentFlag": {
+      "title": "Comment Moderation Flag",
+      "description": "A resident flag reporting a comment for moderator review.",
+      "type": "object",
+      "properties": {
+        "commentId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "civicItemId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "reporterUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "reason": {
+          "type": "string",
+          "enum": ["Harassment", "Spam", "Private Info", "Misleading"]
+        },
+        "details": { "type": "string", "maxLength": 300 },
+        "createdAtLabel": { "type": "string", "maxLength": 60 },
+        "status": { "type": "string", "enum": ["open", "reviewed"] }
+      },
+      "required": ["commentId", "civicItemId", "reporterUid", "reason", "createdAtLabel", "status"]
+    },
+    "ResidentPulse": {
+      "title": "Before-the-Vote Resident Pulse",
+      "description": "Non-binding resident stance and short reason on an upcoming local decision.",
+      "type": "object",
+      "properties": {
+        "civicItemId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "stance": { "type": "string", "enum": ["Support", "Concerned", "Question"] },
+        "reason": { "type": "string", "maxLength": 240 },
+        "updatedAtLabel": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["civicItemId", "userId", "stance", "updatedAtLabel"]
+    },
+    "VolunteerSignup": {
+      "title": "Local Board or Volunteer Signup",
+      "description": "Saved RSVP or board seat interest owned by a signed-in resident.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "opportunityId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "communityName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "kind": { "type": "string", "enum": ["Board Seat", "Cleanup & Event", "Commission"] },
+        "status": { "type": "string", "enum": ["Interested", "Applied"] },
+        "createdAtLabel": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["userId", "opportunityId", "title", "communityName", "kind", "status", "createdAtLabel"]
+    },
+    "WatchlistEntry": {
+      "title": "User Watchlist Entry",
+      "description": "A civic item followed by a signed-in user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "itemId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 60 },
+        "status": { "type": "string", "maxLength": 60 },
+        "department": { "type": "string", "maxLength": 120 }
+      },
+      "required": ["userId", "itemId", "title", "category", "status", "department"]
+    },
+    "UserAction": {
+      "title": "User Action Item",
+      "description": "A queued or completed civic action belonging to a signed-in user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "civicItemId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "actionType": {
+          "type": "string",
+          "enum": ["Attend Meeting", "Email Official", "Sign Petition", "Public Comment", "Report Issue"]
+        },
+        "targetEntity": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "dueDate": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["Queued", "Completed"] }
+      },
+      "required": ["userId", "title", "actionType", "targetEntity", "status"]
+    },
+    "UserAlertPreference": {
+      "title": "User Civic Alert Preferences",
+      "description": "Topic, jurisdiction, and digest alert settings owned by a signed-in resident.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "communityId": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "topics": { "type": "array" },
+        "emailDigestEnabled": { "type": "boolean" },
+        "digestEmail": { "type": "string", "maxLength": 120 },
+        "updatedAtLabel": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["userId", "communityId", "topics", "emailDigestEnabled", "updatedAtLabel"]
+    }
+  },
+  "firestore": {
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/Report311" },
+      "description": "Community 311 issue reports visible across Ashtabula County."
+    },
+    "/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/CivicComment" },
+      "description": "Moderated public stance and official comments on civic proposals."
+    },
+    "/commentFlags/{flagId}": {
+      "schema": { "$ref": "#/entities/CommentFlag" },
+      "description": "Resident moderation flags on public comments."
+    },
+    "/pulses/{pulseId}": {
+      "schema": { "$ref": "#/entities/ResidentPulse" },
+      "description": "Non-binding before-the-vote resident pulses with zero PII."
+    },
+    "/users/{userId}/watchlist/{itemId}": {
+      "schema": { "$ref": "#/entities/WatchlistEntry" },
+      "description": "Private watchlist entries owned by a user."
+    },
+    "/users/{userId}/actions/{actionId}": {
+      "schema": { "$ref": "#/entities/UserAction" },
+      "description": "Private civic action queue items owned by a user."
+    },
+    "/users/{userId}/alertPreferences/{prefId}": {
+      "schema": { "$ref": "#/entities/UserAlertPreference" },
+      "description": "Private alert topic and digest preferences owned by a user."
+    },
+    "/users/{userId}/volunteerSignups/{opportunityId}": {
+      "schema": { "$ref": "#/entities/VolunteerSignup" },
+      "description": "Private board and local volunteer RSVPs owned by a user."
+    }
+  }
+}

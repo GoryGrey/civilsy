@@ -1,0 +1,326 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'smalltownbigcityent@gmail.com'
+      );
+    }
+
+    function isValidReport(data) {
+      return data.keys().hasAll(['category', 'location', 'description', 'status', 'submittedDate', 'upvotes', 'reporterName', 'authorUid', 'communityId'])
+        && data.keys().hasOnly([
+          'category', 'location', 'description', 'status', 'submittedDate',
+          'upvotes', 'reporterName', 'authorUid', 'communityId', 'mapX', 'mapY',
+          'photoUrl', 'photoModerationStatus', 'photoModerationNote', 'photoFlagCount',
+          'afterPhotoUrl', 'resolvedDate',
+          'officialResponse', 'officialResponderName', 'officialRespondedAt'
+        ])
+        && data.category in [
+          'Roads & Paving',
+          'Streetlight & Safety',
+          'Water & Drainage',
+          'Parks & Trees',
+          'Trash & Property',
+          'Sidewalk & Crosswalk',
+          'Traffic & Signage',
+          'Other Local Issue',
+          'Pothole',
+          'Streetlight',
+          'Graffiti',
+          'Illegal Dumping',
+          'Sidewalk Hazard',
+          'Drainage'
+        ]
+        && data.location is string && data.location.size() >= 3 && data.location.size() <= 160
+        && data.description is string && data.description.size() >= 5 && data.description.size() <= 1000
+        && data.status in ['Submitted', 'Dispatched', 'In Progress', 'Resolved']
+        && data.submittedDate is string && data.submittedDate.size() <= 60
+        && data.upvotes is number && data.upvotes >= 0 && data.upvotes <= 100000
+        && data.reporterName is string && data.reporterName.size() >= 1 && data.reporterName.size() <= 80
+        && data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128
+        && data.communityId is string && data.communityId.size() >= 1 && data.communityId.size() <= 64
+        && (!('mapX' in data) || (data.mapX is number && data.mapX >= 0 && data.mapX <= 100))
+        && (!('mapY' in data) || (data.mapY is number && data.mapY >= 0 && data.mapY <= 100))
+        && (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 300))
+        && (!('photoModerationStatus' in data) || data.photoModerationStatus in ['approved', 'pending_review', 'flagged', 'removed'])
+        && (!('photoModerationNote' in data) || (data.photoModerationNote is string && data.photoModerationNote.size() <= 240))
+        && (!('photoFlagCount' in data) || (data.photoFlagCount is number && data.photoFlagCount >= 0 && data.photoFlagCount <= 10000))
+        && (!('afterPhotoUrl' in data) || (data.afterPhotoUrl is string && data.afterPhotoUrl.size() <= 300))
+        && (!('resolvedDate' in data) || (data.resolvedDate is string && data.resolvedDate.size() <= 60))
+        && (!('officialResponse' in data) || (data.officialResponse is string && data.officialResponse.size() <= 600))
+        && (!('officialResponderName' in data) || (data.officialResponderName is string && data.officialResponderName.size() <= 100))
+        && (!('officialRespondedAt' in data) || (data.officialRespondedAt is string && data.officialRespondedAt.size() <= 60));
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll(['civicItemId', 'authorUid', 'authorName', 'stance', 'body', 'createdAtLabel', 'moderationStatus', 'flagCount'])
+        && data.keys().hasOnly([
+          'civicItemId', 'authorUid', 'authorName', 'stance', 'body',
+          'createdAtLabel', 'moderationStatus', 'moderationNote', 'flagCount',
+          'isOfficialResponse', 'officialRole'
+        ])
+        && data.civicItemId is string && data.civicItemId.size() >= 1 && data.civicItemId.size() <= 128
+        && data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80
+        && data.stance in ['Support', 'Concern', 'Question']
+        && data.body is string && data.body.size() >= 3 && data.body.size() <= 1000
+        && data.createdAtLabel is string && data.createdAtLabel.size() <= 60
+        && data.moderationStatus in ['approved', 'pending_review', 'flagged', 'removed']
+        && data.flagCount is number && data.flagCount >= 0 && data.flagCount <= 10000
+        && (!('moderationNote' in data) || (data.moderationNote is string && data.moderationNote.size() <= 240))
+        && (!('isOfficialResponse' in data) || data.isOfficialResponse is bool)
+        && (!('officialRole' in data) || (data.officialRole is string && data.officialRole.size() <= 80));
+    }
+
+    function isValidCommentFlag(data) {
+      return data.keys().hasAll(['commentId', 'civicItemId', 'reporterUid', 'reason', 'createdAtLabel', 'status'])
+        && data.keys().hasOnly(['commentId', 'civicItemId', 'reporterUid', 'reason', 'details', 'createdAtLabel', 'status'])
+        && data.commentId is string && data.commentId.size() >= 1 && data.commentId.size() <= 128
+        && data.civicItemId is string && data.civicItemId.size() >= 1 && data.civicItemId.size() <= 128
+        && data.reporterUid is string && data.reporterUid.size() >= 1 && data.reporterUid.size() <= 128
+        && data.reason in ['Harassment', 'Spam', 'Private Info', 'Misleading']
+        && data.createdAtLabel is string && data.createdAtLabel.size() <= 60
+        && data.status in ['open', 'reviewed']
+        && (!('details' in data) || (data.details is string && data.details.size() <= 300));
+    }
+
+    function isValidWatchlistEntry(data, userId) {
+      return data.keys().hasAll(['userId', 'itemId', 'title', 'category', 'status', 'department'])
+        && data.keys().hasOnly(['userId', 'itemId', 'title', 'category', 'status', 'department'])
+        && data.userId == userId
+        && data.itemId is string && data.itemId.size() >= 1 && data.itemId.size() <= 128
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.category is string && data.category.size() <= 60
+        && data.status is string && data.status.size() <= 60
+        && data.department is string && data.department.size() <= 120;
+    }
+
+    function isValidUserAction(data, userId) {
+      return data.keys().hasAll(['userId', 'title', 'actionType', 'targetEntity', 'status'])
+        && data.keys().hasOnly(['userId', 'civicItemId', 'title', 'actionType', 'targetEntity', 'dueDate', 'status'])
+        && data.userId == userId
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.actionType in ['Attend Meeting', 'Email Official', 'Sign Petition', 'Public Comment', 'Report Issue']
+        && data.targetEntity is string && data.targetEntity.size() >= 1 && data.targetEntity.size() <= 160
+        && data.status in ['Queued', 'Completed']
+        && (!('civicItemId' in data) || (data.civicItemId is string && data.civicItemId.size() <= 128))
+        && (!('dueDate' in data) || (data.dueDate is string && data.dueDate.size() <= 100));
+    }
+
+    function isValidAlertPreference(data, userId) {
+      return data.keys().hasAll(['userId', 'communityId', 'topics', 'emailDigestEnabled', 'updatedAtLabel'])
+        && data.keys().hasOnly(['userId', 'communityId', 'topics', 'emailDigestEnabled', 'digestEmail', 'updatedAtLabel'])
+        && data.userId == userId
+        && data.communityId is string && data.communityId.size() >= 1 && data.communityId.size() <= 64
+        && data.topics is list && data.topics.size() <= 10
+        && (data.topics.size() == 0 || data.topics[0] is string)
+        && data.emailDigestEnabled is bool
+        && data.updatedAtLabel is string && data.updatedAtLabel.size() <= 60
+        && (!('digestEmail' in data) || (data.digestEmail is string && data.digestEmail.size() <= 120));
+    }
+
+    function isValidResidentPulse(data) {
+      return data.keys().hasAll(['civicItemId', 'userId', 'stance', 'updatedAtLabel'])
+        && data.keys().hasOnly(['civicItemId', 'userId', 'stance', 'reason', 'updatedAtLabel'])
+        && data.civicItemId is string && data.civicItemId.size() >= 1 && data.civicItemId.size() <= 128
+        && data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128
+        && data.stance in ['Support', 'Concerned', 'Question']
+        && data.updatedAtLabel is string && data.updatedAtLabel.size() <= 60
+        && (!('reason' in data) || (data.reason is string && data.reason.size() <= 240));
+    }
+
+    function isValidVolunteerSignup(data, userId) {
+      return data.keys().hasAll(['userId', 'opportunityId', 'title', 'communityName', 'kind', 'status', 'createdAtLabel'])
+        && data.keys().hasOnly(['userId', 'opportunityId', 'title', 'communityName', 'kind', 'status', 'createdAtLabel'])
+        && data.userId == userId
+        && data.opportunityId is string && data.opportunityId.size() >= 1 && data.opportunityId.size() <= 128
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.communityName is string && data.communityName.size() >= 1 && data.communityName.size() <= 80
+        && data.kind in ['Board Seat', 'Cleanup & Event', 'Commission']
+        && data.status in ['Interested', 'Applied']
+        && data.createdAtLabel is string && data.createdAtLabel.size() <= 60;
+    }
+
+    match /admins/{uid} {
+      allow get: if isOwner(uid);
+    }
+
+    match /reports/{reportId} {
+      allow get: if isValidId(reportId);
+      allow list: if true;
+      allow create: if isValidId(reportId)
+        && isSignedIn()
+        && isValidReport(incoming())
+        && incoming().authorUid == request.auth.uid
+        && incoming().status == 'Submitted'
+        && incoming().upvotes == 1
+        && (!('photoModerationStatus' in incoming()) || incoming().photoModerationStatus in ['approved', 'pending_review'])
+        && (!('photoFlagCount' in incoming()) || incoming().photoFlagCount == 0)
+        && !('afterPhotoUrl' in incoming())
+        && !('resolvedDate' in incoming())
+        && !('officialResponse' in incoming())
+        && !('officialResponderName' in incoming())
+        && !('officialRespondedAt' in incoming());
+      allow update: if isValidId(reportId) && isSignedIn() && isValidReport(incoming()) && (
+        (
+          incoming().authorUid == existing().authorUid
+          && incoming().diff(existing()).affectedKeys().hasOnly(['upvotes'])
+          && incoming().upvotes == existing().upvotes + 1
+        ) || (
+          'photoUrl' in existing()
+          && incoming().authorUid == existing().authorUid
+          && incoming().diff(existing()).affectedKeys().hasOnly(['photoFlagCount', 'photoModerationStatus', 'photoModerationNote'])
+          && incoming().photoModerationStatus == 'flagged'
+          && (
+            (!('photoFlagCount' in existing()) && incoming().photoFlagCount == 1) ||
+            ('photoFlagCount' in existing() && incoming().photoFlagCount == existing().photoFlagCount + 1)
+          )
+        ) || (
+          isAdmin()
+          && incoming().authorUid == existing().authorUid
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'status', 'afterPhotoUrl', 'resolvedDate',
+            'officialResponse', 'officialResponderName', 'officialRespondedAt',
+            'photoModerationStatus', 'photoModerationNote'
+          ])
+        )
+      );
+      allow delete: if isValidId(reportId) && (
+        isAdmin() || (isSignedIn() && existing().authorUid == request.auth.uid)
+      );
+    }
+
+    match /comments/{commentId} {
+      allow get: if isValidId(commentId) && (
+        existing().moderationStatus == 'approved' ||
+        isAdmin() ||
+        (isSignedIn() && existing().authorUid == request.auth.uid)
+      );
+      allow list: if (
+        resource.data.moderationStatus == 'approved' ||
+        isAdmin() ||
+        (isSignedIn() && resource.data.authorUid == request.auth.uid)
+      );
+      allow create: if isValidId(commentId)
+        && isSignedIn()
+        && isValidComment(incoming())
+        && incoming().authorUid == request.auth.uid
+        && incoming().flagCount == 0
+        && incoming().moderationStatus in ['approved', 'pending_review']
+        && (
+          isAdmin() ||
+          (!('isOfficialResponse' in incoming()) || incoming().isOfficialResponse == false)
+        );
+      allow update: if isValidId(commentId) && isSignedIn() && isValidComment(incoming()) && (
+        (
+          isAdmin()
+          && incoming().authorUid == existing().authorUid
+          && incoming().civicItemId == existing().civicItemId
+          && incoming().diff(existing()).affectedKeys().hasOnly(['moderationStatus', 'moderationNote', 'isOfficialResponse', 'officialRole'])
+        ) || (
+          incoming().authorUid == existing().authorUid
+          && incoming().civicItemId == existing().civicItemId
+          && incoming().diff(existing()).affectedKeys().hasOnly(['flagCount', 'moderationStatus'])
+          && incoming().flagCount == existing().flagCount + 1
+          && (incoming().moderationStatus == existing().moderationStatus || incoming().moderationStatus == 'flagged')
+        )
+      );
+      allow delete: if isValidId(commentId) && (
+        isAdmin() || (isSignedIn() && existing().authorUid == request.auth.uid)
+      );
+    }
+
+    match /commentFlags/{flagId} {
+      allow get: if isValidId(flagId) && (
+        isAdmin() || (isSignedIn() && existing().reporterUid == request.auth.uid)
+      );
+      allow list: if isAdmin() || (isSignedIn() && resource.data.reporterUid == request.auth.uid);
+      allow create: if isValidId(flagId)
+        && isSignedIn()
+        && isValidCommentFlag(incoming())
+        && incoming().reporterUid == request.auth.uid
+        && incoming().status == 'open'
+        && exists(/databases/$(database)/documents/comments/$(incoming().commentId));
+      allow update: if isValidId(flagId)
+        && isAdmin()
+        && isValidCommentFlag(incoming())
+        && incoming().reporterUid == existing().reporterUid
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if isValidId(flagId) && isAdmin();
+    }
+
+    match /users/{userId}/watchlist/{itemId} {
+      allow get: if isOwner(userId) && isValidId(itemId);
+      allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+      allow create: if isOwner(userId) && isValidId(itemId) && isValidWatchlistEntry(incoming(), userId);
+      allow delete: if isOwner(userId) && isValidId(itemId);
+    }
+
+    match /users/{userId}/actions/{actionId} {
+      allow get: if isOwner(userId) && isValidId(actionId);
+      allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+      allow create: if isOwner(userId) && isValidId(actionId) && isValidUserAction(incoming(), userId);
+      allow update: if isOwner(userId)
+        && isValidId(actionId)
+        && isValidUserAction(incoming(), userId)
+        && incoming().userId == existing().userId
+        && existing().status != 'Completed'
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if isOwner(userId) && isValidId(actionId);
+    }
+
+    match /pulses/{pulseId} {
+      allow get: if isValidId(pulseId);
+      allow list: if true;
+      allow create, update: if isValidId(pulseId)
+        && isSignedIn()
+        && isValidResidentPulse(incoming())
+        && incoming().userId == request.auth.uid
+        && pulseId == incoming().civicItemId + '__' + request.auth.uid;
+      allow delete: if isValidId(pulseId) && (
+        isAdmin() || (isSignedIn() && existing().userId == request.auth.uid)
+      );
+    }
+
+    match /users/{userId}/alertPreferences/{prefId} {
+      allow get: if isOwner(userId) && isValidId(prefId);
+      allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+      allow create, update: if isOwner(userId) && isValidId(prefId) && isValidAlertPreference(incoming(), userId);
+      allow delete: if isOwner(userId) && isValidId(prefId);
+    }
+
+    match /users/{userId}/volunteerSignups/{opportunityId} {
+      allow get: if isOwner(userId) && isValidId(opportunityId);
+      allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+      allow create, update: if isOwner(userId) && isValidId(opportunityId) && isValidVolunteerSignup(incoming(), userId);
+      allow delete: if isOwner(userId) && isValidId(opportunityId);
+    }
+  }
+}

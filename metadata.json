@@ -1,0 +1,6 @@
+{
+  "name": "CIVILSY — The Amazon of Civic Engagement & Education",
+  "description": "A modern, AI-powered consumer platform where people can discover local government, understand complex laws in plain English, take action, and track results.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
